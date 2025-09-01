@@ -10,6 +10,7 @@ import os
 import importlib
 import importlib.util
 
+
 class Bot(commands.Bot):
     def __init__(self, prefix, config_path):
         intents = discord.Intents.default()
@@ -23,7 +24,7 @@ class Bot(commands.Bot):
     async def on_ready(self):
         logger.info(f"Logged in as {self.user}")
         self.available_cogs = await self.find_cogs()
-        await self.load_cog(self.available_cogs["base"])
+        await self.load_cog(self.available_cogs["base"]["spec"])
 
     async def find_cogs(self):
         importlib.invalidate_caches()
@@ -32,10 +33,23 @@ class Bot(commands.Bot):
         specs = {}
         for cog in os.listdir(self.cog_path):
             cog_path = f"{self.cog_path}/{cog}/"
+            if cog[:2] == "__" or not os.path.isdir(cog_path):
+                self.logger.warning(f"Invalid entry found in {self.cog_path}: {cog}, skipping")
+                continue
             spec = importlib.util.spec_from_file_location(cog, f"{cog_path}/__init__.py")
             if spec is not None:
+                if not os.path.isfile(f"{cog_path}/info.yaml"):
+                    self.logger.warning(f"{cog} found but no info.yaml provided, skipping.")
+                    continue
+                with open(f"{cog_path}/info.yaml", "rb") as f:
+                    cog_info = yaml.safe_load(f)
+
                 valid_cogs.append(cog)
-                specs[cog] = spec
+                specs[cog] = {
+                    "name": cog_info["name"],
+                    "desc": cog_info["description"],
+                    "spec": spec
+                }
             else:
                 failed_cogs.append(cog)
         if len(failed_cogs) > 0:
@@ -49,8 +63,6 @@ class Bot(commands.Bot):
         sys.modules[cog_spec.name] = cog_module
         cog_spec.loader.exec_module(cog_module)
         await cog_module.setup(self)
-
-
 
 
 def first_run(path):

@@ -8,13 +8,13 @@ class Base(commands.Cog):
 
     @commands.command()
     async def shutdown(self, ctx):
-        ctx.send("Shutting down...")
+        await ctx.send("Shutting down...")
         await self.bot.close()
 
     @commands.command()
     async def load(self, ctx, cog_name):
         if cog_name in self.bot.available_cogs:
-            spec = self.bot.available_cogs[cog_name]
+            spec = self.bot.available_cogs[cog_name]["spec"]
             await self.bot.load_cog(spec)
             await ctx.send(f"{cog_name} loaded!")
         else:
@@ -24,9 +24,11 @@ class Base(commands.Cog):
     async def cogs(self, ctx):
         msg = "## Available cogs:"
         for cog_name in self.bot.available_cogs.keys():
-            msg += f"\n\t* {cog_name}"
+            full_name = self.bot.available_cogs[cog_name]["name"]
+            desc = self.bot.available_cogs[cog_name]["desc"]
+            msg += f"\n\t* {full_name} (`{cog_name}`) - {desc}"
             if self.bot.get_cog(cog_name.capitalize()) is not None:
-                msg += " [Loaded]"
+                msg += " **[Loaded]**"
         await ctx.send(msg)
 
     @commands.command()
