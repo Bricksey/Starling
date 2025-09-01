@@ -7,6 +7,7 @@ import argparse
 import yaml
 import logging
 import os
+import importlib
 import importlib.util
 
 class Bot(commands.Bot):
@@ -25,6 +26,7 @@ class Bot(commands.Bot):
         await self.load_cog(self.available_cogs["base"])
 
     async def find_cogs(self):
+        importlib.invalidate_caches()
         valid_cogs = []
         failed_cogs = []
         specs = {}

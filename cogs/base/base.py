@@ -37,3 +37,8 @@ class Base(commands.Cog):
         else:
             await ctx.send(f"{cog_name} not found")
 
+    @commands.command()
+    async def refresh(self, ctx):
+        self.bot.available_cogs = await self.bot.find_cogs()
+        await ctx.send(f"{len(self.bot.available_cogs)} cogs found.")
+
