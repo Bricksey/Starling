@@ -14,4 +14,4 @@ wheels/
 .vscode
 
 # Config
-conf.yaml
+config
