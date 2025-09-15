@@ -9,12 +9,24 @@ class Base(commands.Cog):
 
     async def cog_load(self):
         default_config = {
-            "cogs": []
+            "cogs": [],
+            "status": "default"
         }
         self.conf = await self.bot.get_config("base", default_config)
         for cog in self.conf["cogs"]:
             spec = self.bot.available_cogs[cog]["spec"]
             await self.bot.load_cog(spec)
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.set_status()
+
+    @commands.command()
+    async def status(self, ctx, *, status):
+        self.conf["status"] = status
+        await self.set_status()
+        await self.bot.write_config("base", self.conf)
+        await ctx.send("Status changed!")
 
     @commands.command()
     async def shutdown(self, ctx):
@@ -60,4 +72,12 @@ class Base(commands.Cog):
     async def refresh(self, ctx):
         self.bot.available_cogs = await self.bot.find_cogs()
         await ctx.send(f"{len(self.bot.available_cogs)} cogs found.")
+
+    async def set_status(self):
+        await self.bot.wait_until_ready()
+        status = self.conf["status"]
+        if status == "default":
+            status = f"Running discord.py {discord.__version__}"
+        await self.bot.change_presence(activity=discord.CustomActivity(status))
+
 

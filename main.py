@@ -112,7 +112,7 @@ def main():
     bot = Bot(prefix, config_path)
     bot.run(
         token,
-        log_level=logging.DEBUG,
+        log_level=logging.INFO,
         root_logger=True
     )
 
