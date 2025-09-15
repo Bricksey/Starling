@@ -5,6 +5,16 @@ from discord.ext import commands
 class Base(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.conf = {}
+
+    async def cog_load(self):
+        default_config = {
+            "cogs": []
+        }
+        self.conf = await self.bot.get_config("base", default_config)
+        for cog in self.conf["cogs"]:
+            spec = self.bot.available_cogs[cog]["spec"]
+            await self.bot.load_cog(spec)
 
     @commands.command()
     async def shutdown(self, ctx):
@@ -17,6 +27,8 @@ class Base(commands.Cog):
             spec = self.bot.available_cogs[cog_name]["spec"]
             await self.bot.load_cog(spec)
             await ctx.send(f"{cog_name} loaded!")
+            self.conf["cogs"].append(cog_name)
+            await self.bot.write_config("base", self.conf)
         else:
             await ctx.send(f"{cog_name} not found.")
 
@@ -33,9 +45,14 @@ class Base(commands.Cog):
 
     @commands.command()
     async def unload(self, ctx, cog_name):
+        if cog_name == "base":
+            await ctx.send("Cannot unload `base`, doing so would break core bot functionality.")
+            return
         if self.bot.get_cog(cog_name.capitalize()) is not None:
             await self.bot.remove_cog(cog_name.capitalize())
             await ctx.send(f"{cog_name} unloaded")
+            self.conf["cogs"].remove(cog_name)
+            await self.bot.write_config("base", self.conf)
         else:
             await ctx.send(f"{cog_name} not found")
 

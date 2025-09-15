@@ -1,5 +1,3 @@
-from venv import logger
-
 import discord
 import sys
 from discord.ext import commands
@@ -21,10 +19,12 @@ class Bot(commands.Bot):
         self.available_cogs = {}
         super().__init__(prefix, intents=intents)
 
-    async def on_ready(self):
-        logger.info(f"Logged in as {self.user}")
+    async def setup_hook(self):
         self.available_cogs = await self.find_cogs()
         await self.load_cog(self.available_cogs["base"]["spec"])
+
+    async def on_ready(self):
+        self.logger.info(f"Logged in as {self.user}")
 
     async def find_cogs(self):
         importlib.invalidate_caches()
@@ -64,6 +64,18 @@ class Bot(commands.Bot):
         cog_spec.loader.exec_module(cog_module)
         await cog_module.setup(self)
 
+    async def get_config(self, identifier, default_config=None):
+        try:
+            with open(f"{self.config_path}/{identifier}.yaml", "r") as f:
+                return yaml.safe_load(f)
+        except FileNotFoundError:
+            with open(f"{self.config_path}/{identifier}.yaml", "w") as f:
+                yaml.safe_dump(default_config, f)
+                return default_config
+
+    async def write_config(self, identifier, data):
+        with open(f"{self.config_path}/{identifier}.yaml", "w") as f:
+            yaml.safe_dump(data, f)
 
 def first_run(path):
     token = input("Bot token: ")
@@ -100,7 +112,7 @@ def main():
     bot = Bot(prefix, config_path)
     bot.run(
         token,
-        log_level=logging.INFO,
+        log_level=logging.DEBUG,
         root_logger=True
     )
 
