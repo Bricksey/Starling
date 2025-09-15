@@ -32,6 +32,7 @@ class Mumble(commands.Cog):
         self.bot = bot
         self.logger = self.bot.logger
         self.conf = {}
+        self.user_notification_settings = {}
         self.servers_by_user = {}
         self.servers_by_channel = {}
         self.servers_by_address = {}
@@ -39,10 +40,12 @@ class Mumble(commands.Cog):
     async def cog_load(self):
         default_config = {
             "task_interval": 5,
-            "servers": []
+            "servers": [],
+            "user_notifications" : {}
         }
         self.conf = await self.bot.get_config("mumble", default_config)
         all_servers = [MumbleServer(**s) for s in self.conf["servers"]]
+        self.user_notification_settings = self.conf["user_notifications"]
 
 
         self.update_statuses.start()
@@ -90,11 +93,6 @@ class Mumble(commands.Cog):
         except ValueError:
             await ctx.send("Discord channel IDs must be integers.")
 
-        connection_test = await self.server_is_reachable(server_address)
-        if not connection_test:
-            await ctx.send("Server does not appear to be reachable, try again.")
-            return
-
         # Ensure that duplicate channels can't be added
         if server_address in self.servers_by_address:
             server = self.servers_by_address[server_address]
@@ -102,11 +100,17 @@ class Mumble(commands.Cog):
                 await ctx.send(f"Channel is already displaying status of {server_address}")
                 return
         else:
+            connection_test = await self.server_is_reachable(server_address)
+            if not connection_test:
+                await ctx.send("Server does not appear to be reachable, try again.")
+                return
             server = MumbleServer(server_address)
             self.servers_by_address[server_address] = server
 
         server.channels.append(int(channel_id))
         self.servers_by_channel[channel_id] = server
+        # Force an update
+        server.user_count = -1
         await self.update_conf()
         await ctx.send("Added status to channel")
         self.logger.info(f"Tracking added for {server_address} on channel {channel_id}")
@@ -135,29 +139,77 @@ class Mumble(commands.Cog):
         # Cleanup status and dc from voice if needed
         channel = self.bot.get_channel(channel_id)
         await channel.edit(status=None)
-        if c := channel.guild.voice_client is not None:
+        c = channel.guild.voice_client
+        if c is not None:
             await c.disconnect()
 
-    # TODO: Message users when a server becomes active
-    # @mumble.group(invoke_without_command=True)
-    # async def untrack(self, ctx):
-    #     await ctx.send("untrack")
-    #
-    # @mumble.group(invoke_without_command=True)
-    # async def track(self, ctx):
-    #     await ctx.send("track")
-    #
-    # @track.command()
-    # async def on(self, ctx):
-    #     await ctx.send("track on")
-    #
-    # @track.command()
-    # async def off(self, ctx):
-    #     await ctx.send("track off")
-    #
-    # @track.command()
-    # async def auto(self, ctx):
-    #     await ctx.send("track auto")
+    @mumble.group(invoke_without_command=True)
+    async def untrack(self, ctx, server_address):
+        user_id = ctx.message.author.id
+        try:
+            server = self.servers_by_address[server_address]
+            self.servers_by_user[user_id].remove(server)
+            server.users.remove(user_id)
+            if len(self.servers_by_user[user_id]) == 0:
+                del self.servers_by_user[user_id]
+            # Remove the server if it is no longer needed
+            if not (server.channels or server.users):
+                del self.servers_by_address[server.address]
+            await self.update_conf()
+            await ctx.send(f"{server.address} is no longer being tracked.")
+        except (ValueError, KeyError):
+            await ctx.send("You weren't tracking that server")
+
+
+
+    @mumble.group(invoke_without_command=True)
+    async def track(self, ctx, server_address):
+        user_id = ctx.message.author.id
+        # Check server is valid before writing to config
+        if server_address in self.servers_by_address:
+            server = self.servers_by_address[server_address]
+            if user_id in server.users:
+                await ctx.send("You're already tracking that server.")
+                return
+        else:
+            connection_test = await self.server_is_reachable(server_address)
+            if not connection_test:
+                await ctx.send("Server does not appear to be reachable, try again.")
+                return
+            server = MumbleServer(server_address)
+        self.servers_by_address[server_address] = server
+        if user_id not in self.servers_by_user:
+            self.servers_by_user[user_id] = []
+        self.servers_by_user[user_id].append(server)
+        server.users.append(user_id)
+        await self.update_conf()
+        msg = f"Added tracking for {server_address}"
+        # Warn user if their notifications are off when adding a server.
+        if user_id not in self.user_notification_settings:
+            msg += ", but you haven't configured notifications."
+            msg += "\nConsider running `!track on`"
+            await ctx.send(msg)
+            return
+        notif = self.user_notification_settings[user_id]
+        if notif == "off":
+            msg += ", but your notifications are currently off."
+            await ctx.send(msg)
+            return
+        await ctx.send(msg)
+
+    @track.command()
+    async def on(self, ctx):
+        user_id = ctx.message.author.id
+        self.user_notification_settings[user_id] = "on"
+        await self.update_conf()
+        await ctx.send("Opted in to Mumble notifications")
+
+    @track.command()
+    async def off(self, ctx):
+        user_id = ctx.message.author.id
+        self.user_notification_settings[user_id] = "off"
+        await self.update_conf()
+        await ctx.send("Opted out of Mumble notifications")
 
     @tasks.loop(seconds=5)
     async def update_statuses(self):
@@ -199,6 +251,24 @@ class Mumble(commands.Cog):
                 elif s.user_count == 0 and voice_client is not None:
                     self.logger.info(f"Disconnected from {channel.name} in {guild.name}")
                     await voice_client.disconnect()
+
+            # Only notify users when someone first joins a server
+            if previous_count == 0 and s.user_count > 0:
+                self.logger.info(f"pinging users for {s.address}")
+                for user_id in s.users:
+                    user = self.bot.get_user(user_id)
+                    if user is None:
+                        # Only ping discord if user isn't cached
+                        user = await self.bot.fetch_user(user_id)
+                    try:
+                        notif = self.user_notification_settings[user_id]
+                        if notif == "on":
+                            dm = await user.create_dm()
+                            msg = f"{s.address} just became active!"
+                            await dm.send(msg)
+                    except KeyError:
+                        continue
+
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
