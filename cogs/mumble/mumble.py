@@ -1,4 +1,5 @@
 import discord
+import logging
 import asyncio
 import socket
 from datetime import datetime, timezone
@@ -30,7 +31,7 @@ class MumbleServer:
 class Mumble(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.logger = self.bot.logger
+        self.logger = logging.getLogger(__name__)
         self.conf = {}
         self.user_notification_settings = {}
         self.servers_by_user = {}
