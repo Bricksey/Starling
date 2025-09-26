@@ -254,7 +254,7 @@ class Mumble(commands.Cog):
                 voice_client = guild.voice_client
                 if s.user_count > 0 and voice_client is None:
                     self.logger.info(f"Connected to {channel.name} in {guild.name}")
-                    await channel.connect()
+                    await channel.connect(self_mute=True, self_deaf=True)
                 elif s.user_count == 0 and voice_client is not None:
                     self.logger.info(f"Disconnected from {channel.name} in {guild.name}")
                     await voice_client.disconnect()
