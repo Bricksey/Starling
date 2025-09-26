@@ -279,12 +279,12 @@ class Mumble(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        # Status gets cleared when a channel is empty :3
+        # Status gets cleared when a channel is empty
         channel = before.channel
         if channel is None:
             return
 
-        server = self.get_servers(channel=channel)
+        server = self.get_servers(channel=channel.id)
         if server is None:
             return
 
