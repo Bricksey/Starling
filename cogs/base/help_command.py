@@ -42,6 +42,13 @@ class HelpCommand(commands.HelpCommand):
 
 
     async def send_group_help(self, group):
+        bot = self.context.bot
+        cog_name = group.name.capitalize()
+        # Get cog help if group is just used for namespacing
+        if group.help is None and cog_name in bot.cogs:
+            cog = bot.cogs[cog_name]
+            await self.send_cog_help(cog)
+            return
         prefix = self.context.bot.command_prefix
         msg = f"### Help for `{group.qualified_name}`"
         msg += f"\n```yaml\n{group.help}\n```".replace("[p]", prefix)
