@@ -54,6 +54,19 @@ class HelpCommand(commands.HelpCommand):
         msg += f"\n```yaml\n{group.help}\n```".replace("[p]", prefix)
         await self.get_destination().send(msg)
 
+    async def command_not_found(self, string):
+        cog_name = string.capitalize()
+        bot = self.context.bot
+        if cog_name in bot.cogs:
+            cog = bot.cogs[cog_name]
+            await self.send_cog_help(cog)
+        else:
+            await self.get_destination().send("Command not found")
+
+    async def send_error_message(self, error):
+        # Not needed as command_not_found prints the error.
+        pass
+
     async def get_all_group_commands(self, group):
         if group.short_doc is not None:
             msg = f"\n{group.qualified_name}: {group.short_doc}"
