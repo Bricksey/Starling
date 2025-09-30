@@ -1,3 +1,5 @@
+import traceback
+
 import discord
 import sys
 from discord.ext import commands
@@ -5,8 +7,6 @@ import argparse
 import yaml
 import logging
 import os
-import importlib
-import importlib.util
 
 
 class Bot(commands.Bot):
@@ -15,54 +15,33 @@ class Bot(commands.Bot):
         intents.message_content = True
         self.logger = logging.getLogger(__name__)
         self.config_path = config_path
-        self.cog_path = "./cogs"
         self.available_cogs = {}
         super().__init__(prefix, intents=intents)
 
     async def setup_hook(self):
-        self.available_cogs = await self.find_cogs()
-        await self.load_cog(self.available_cogs["base"]["spec"])
+        await self.load_cogs()
 
     async def on_ready(self):
         self.logger.info(f"Logged in as {self.user}")
 
-    async def find_cogs(self):
-        importlib.invalidate_caches()
+    async def load_cogs(self):
         valid_cogs = []
         failed_cogs = []
-        specs = {}
-        for cog in os.listdir(self.cog_path):
-            cog_path = f"{self.cog_path}/{cog}/"
-            if cog[:2] == "__" or not os.path.isdir(cog_path):
-                self.logger.warning(f"Invalid entry found in {self.cog_path}: {cog}, skipping")
-                continue
-            spec = importlib.util.spec_from_file_location(cog, f"{cog_path}/__init__.py")
-            if spec is not None:
-                if not os.path.isfile(f"{cog_path}/info.yaml"):
-                    self.logger.warning(f"{cog} found but no info.yaml provided, skipping.")
-                    continue
-                with open(f"{cog_path}/info.yaml", "rb") as f:
-                    cog_info = yaml.safe_load(f)
-
+        for cog in os.listdir("cogs"):
+            try:
+                await self.load_extension(f"cogs.{cog}")
                 valid_cogs.append(cog)
-                specs[cog] = {
-                    "name": cog_info["name"],
-                    "desc": cog_info["description"],
-                    "spec": spec
-                }
-            else:
+            except commands.ExtensionAlreadyLoaded:
+                # Allow loading new cogs by running this function again from base
+                self.logger.debug(f"{cog} already loaded, skipping.")
+            except commands.ExtensionError as e:
+                # Catch all other errors in cogs.
+                self.logger.warning(f"Extension load failed for {cog}: {e}")
+                self.logger.debug(traceback.format_exc())
                 failed_cogs.append(cog)
         if len(failed_cogs) > 0:
             self.logger.warning(f"Failed to load the following cogs: {failed_cogs}")
-        self.logger.info(f"Cogs found in {self.cog_path}: {valid_cogs}")
-        return specs
-
-    async def load_cog(self, cog_spec):
-        self.logger.info(f"Loading {cog_spec.name}")
-        cog_module = importlib.util.module_from_spec(cog_spec)
-        sys.modules[cog_spec.name] = cog_module
-        cog_spec.loader.exec_module(cog_module)
-        await cog_module.setup(self)
+        self.logger.info(f"Cogs found: {valid_cogs}")
 
     async def get_config(self, identifier, default_config=None):
         try:

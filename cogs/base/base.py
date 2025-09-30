@@ -1,3 +1,5 @@
+import traceback
+
 import discord
 from discord.ext import commands
 from .help_command import HelpCommand
@@ -11,13 +13,9 @@ class Base(commands.Cog):
 
     async def cog_load(self):
         default_config = {
-            "cogs": [],
             "status": "default"
         }
         self.conf = await self.bot.get_config("base", default_config)
-        for cog in self.conf["cogs"]:
-            spec = self.bot.available_cogs[cog]["spec"]
-            await self.bot.load_cog(spec)
         self.bot.help_command = HelpCommand()
 
     @commands.Cog.listener()
@@ -28,9 +26,9 @@ class Base(commands.Cog):
     async def status(self, ctx, *, status):
         """
         Sets the bot's status.
-        Running `[p]status default` will reset the status.
+        Running [p]status default will reset the status.
         Arguments:
-            `status`: The status to give the bot.
+            status: The status to give the bot.
         Example usage:
             [p]status Hello, world!
         """
@@ -48,65 +46,33 @@ class Base(commands.Cog):
         await self.bot.close()
 
     @commands.command()
-    async def load(self, ctx, cog_name):
-        """
-        Loads a cog
-        Arguments:
-            `cog`: The cog to load
-        Example usage:
-            [p]load ping
-        """
-        if cog_name in self.bot.available_cogs:
-            spec = self.bot.available_cogs[cog_name]["spec"]
-            await self.bot.load_cog(spec)
-            await ctx.send(f"{cog_name} loaded!")
-            self.conf["cogs"].append(cog_name)
-            await self.bot.write_config("base", self.conf)
-        else:
-            await ctx.send(f"{cog_name} not found.")
-
-    @commands.command()
-    async def cogs(self, ctx):
-        """
-        Lists all cogs available to load.
-        Cogs can be loaded using the `package names`
-        """
-        msg = "## Available cogs:"
-        for cog_name in self.bot.available_cogs.keys():
-            full_name = self.bot.available_cogs[cog_name]["name"]
-            desc = self.bot.available_cogs[cog_name]["desc"]
-            msg += f"\n\t* {full_name} (`{cog_name}`) - {desc}"
-            if self.bot.get_cog(cog_name.capitalize()) is not None:
-                msg += " **[Loaded]**"
-        await ctx.send(msg)
-
-    @commands.command()
-    async def unload(self, ctx, cog_name):
-        """
-        Unloads a cog
-        Arguments:
-            `cog`: The cog to unload
-        Example usage:
-            [p]unload ping
-        """
-        if cog_name == "base":
-            await ctx.send("Cannot unload `base`, doing so would break core bot functionality.")
-            return
-        if self.bot.get_cog(cog_name.capitalize()) is not None:
-            await self.bot.remove_cog(cog_name.capitalize())
-            await ctx.send(f"{cog_name} unloaded")
-            self.conf["cogs"].remove(cog_name)
-            await self.bot.write_config("base", self.conf)
-        else:
-            await ctx.send(f"{cog_name} not found")
-
-    @commands.command()
     async def refresh(self, ctx):
         """
-        Refreshes all available cogs in the bot's cog directory
+        Scans for and loads any new cogs in the bot's cog directory
         """
-        self.bot.available_cogs = await self.bot.find_cogs()
-        await ctx.send(f"{len(self.bot.available_cogs)} cogs found.")
+        extension_count = len(self.bot.extensions)
+        self.bot.available_cogs = await self.bot.load_cogs()
+        new_extensions = len(self.bot.extensions) - extension_count
+        if new_extensions > 0:
+            await ctx.send(f"{new_extensions} cogs loaded!")
+            return
+        await ctx.send("No new cogs found")
+
+    @commands.command()
+    async def reload(self, ctx, cog):
+        """
+        Reloads a loaded cog.
+        Arguments:
+            cog: The name of the cog to reload
+        Example usage:
+            [p]reload ping
+        """
+        try:
+            await self.bot.reload_extension(f"cogs.{cog}")
+            await ctx.send(f"{cog} reloaded!")
+        except commands.ExtensionError as e:
+            self.bot.logger.warn(traceback.format_exc())
+            await ctx.send(f"An error occurred: `{e}`\nCheck your logs for more details.")
 
     async def set_status(self):
         await self.bot.wait_until_ready()
