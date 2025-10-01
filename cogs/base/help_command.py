@@ -1,6 +1,10 @@
+from typing import Any
+
 import discord
 from discord.ext import commands
 import textwrap
+
+from discord.ext.commands import Command
 
 
 class HelpCommand(commands.HelpCommand):
@@ -62,6 +66,13 @@ class HelpCommand(commands.HelpCommand):
             await self.send_cog_help(cog)
         else:
             await self.get_destination().send("Command not found")
+
+    async def subcommand_not_found(self, command, string):
+        # If a subcommand is not found, send parent's help
+        if isinstance(command, commands.Group) and len(command.all_commands) > 0:
+            await self.send_group_help(command)
+        else:
+            await self.send_command_help(command)
 
     async def send_error_message(self, error):
         # Not needed as command_not_found prints the error.
