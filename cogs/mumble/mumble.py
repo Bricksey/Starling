@@ -38,7 +38,11 @@ class Mumble(commands.Cog):
     async def cog_unload(self):
         self.logger.info("Unloading Mumble Status, clearing channel status")
         for channel in self.channels:
-            await self.bot.get_channel(channel).edit(status=None)
+            channel = self.bot.get_channel(channel)
+            voice_client = channel.guild.voice_client
+            await channel.edit(status=None)
+            if voice_client is not None:
+                await voice_client.disconnect()
         self.update_statuses.stop()
 
 
