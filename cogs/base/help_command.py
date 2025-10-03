@@ -1,10 +1,6 @@
-from typing import Any
-
 import discord
 from discord.ext import commands
 import textwrap
-
-from discord.ext.commands import Command
 
 
 class HelpCommand(commands.HelpCommand):
@@ -33,7 +29,8 @@ class HelpCommand(commands.HelpCommand):
     async def send_cog_help(self, cog):
         prefix = self.context.bot.command_prefix
         msg = f"### Commands for `{cog.qualified_name}`\n```yaml"
-        for command in cog.get_commands():
+        cmds = cog.get_commands()
+        for command in await self.filter_commands(cmds):
             msg += await self.get_all_group_commands(command)
         msg += f"\n```\n* For detailed info on a command, run `{prefix}help command_name`"
         await self.get_destination().send(msg)
