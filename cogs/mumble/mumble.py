@@ -64,6 +64,7 @@ class Mumble(commands.Cog):
         await ctx.send(msg)
 
     @mumble.command()
+    @commands.is_owner()
     async def server(self, ctx, server_address=None):
         """
         Sets the Mumble server for the cog to track
@@ -88,6 +89,7 @@ class Mumble(commands.Cog):
         await self.update_conf()
 
     @mumble.command()
+    @commands.is_owner()
     async def interval(self, ctx, interval):
         """
         Sets the frequency at which the server is pinged
@@ -103,7 +105,8 @@ class Mumble(commands.Cog):
         except ValueError:
             await ctx.send("Invalid value for interval")
 
-    @mumble.group(invoke_without_command=True)
+    @mumble.command()
+    @commands.is_owner()
     async def status(self, ctx, channel_id=None):
         """
         Toggles displaying the Mumble status on the given channel.
@@ -137,7 +140,7 @@ class Mumble(commands.Cog):
         await ctx.send("Added status to channel")
         self.logger.info(f"Mumble tracking added for channel {channel_id}")
 
-    @mumble.group(invoke_without_command=True)
+    @mumble.command()
     async def notify(self, ctx):
         """
         Toggles DM notifications for activity on the Mumble server
@@ -191,7 +194,7 @@ class Mumble(commands.Cog):
             voice_client = guild.voice_client
             if self.user_count > 0 and voice_client is None:
                 self.logger.info(f"Connected to {channel.name} in {guild.name}")
-                await channel.connect(self_mute=True, self_deaf=True)
+                await channel.connect(self_mute=True, self_deaf=True, timeout=1)
             elif self.user_count == 0 and voice_client is not None:
                 self.logger.info(f"Disconnected from {channel.name} in {guild.name}")
                 await voice_client.disconnect()

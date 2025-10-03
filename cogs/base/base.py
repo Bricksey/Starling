@@ -23,6 +23,7 @@ class Base(commands.Cog):
         await self.set_status()
 
     @commands.command()
+    @commands.is_owner()
     async def status(self, ctx, *, status):
         """
         Sets the bot's status.
@@ -38,6 +39,7 @@ class Base(commands.Cog):
         await ctx.send("Status changed!")
 
     @commands.command()
+    @commands.is_owner()
     async def shutdown(self, ctx):
         """
         Shuts the bot down.
@@ -46,6 +48,7 @@ class Base(commands.Cog):
         await self.bot.close()
 
     @commands.command()
+    @commands.is_owner()
     async def refresh(self, ctx):
         """
         Scans for and loads any new cogs in the bot's cog directory
@@ -59,6 +62,7 @@ class Base(commands.Cog):
         await ctx.send("No new cogs found")
 
     @commands.command()
+    @commands.is_owner()
     async def reload(self, ctx, cog):
         """
         Reloads a loaded cog.
