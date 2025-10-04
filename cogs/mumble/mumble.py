@@ -216,7 +216,7 @@ class Mumble(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         # Status gets cleared when a channel is empty
         channel = before.channel
-        if channel is None or channel not in self.channels:
+        if channel is None or channel.id not in self.channels:
             return
 
         if len(before.channel.members) == 0:
