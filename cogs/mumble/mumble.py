@@ -81,7 +81,10 @@ class Mumble(commands.Cog):
         address = url.hostname
         if port := url.port is None:
             port = 64738
-        if not await self.server_is_reachable(address, port):
+        # Connection test may be slow, give user feedback with typing indicator.
+        async with ctx.typing():
+            reachable = await self.server_is_reachable(address, port)
+        if not reachable:
             await ctx.send("That server does not appear reachable, try again.")
         else:
             self.mumble_server = [address, port]
