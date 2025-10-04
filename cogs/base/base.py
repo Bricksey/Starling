@@ -82,7 +82,10 @@ class Base(commands.Cog):
         await self.bot.wait_until_ready()
         status = self.conf["status"]
         if status == "default":
-            status = f"Running discord.py {discord.__version__}"
+            p = self.bot.command_prefix
+            users = len(list(self.bot.get_all_members()))
+            guilds = len(self.bot.guilds)
+            status = f"{p}help | {users} users | {guilds} servers"
         await self.bot.change_presence(activity=discord.CustomActivity(status))
 
 

@@ -13,6 +13,7 @@ class Bot(commands.Bot):
     def __init__(self, prefix, config_path):
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         self.logger = logging.getLogger(__name__)
         self.config_path = config_path
         self.available_cogs = {}
