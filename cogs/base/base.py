@@ -36,7 +36,7 @@ class Base(commands.Cog):
         self.conf["status"] = status
         await self.set_status()
         await self.bot.write_config("base", self.conf)
-        await ctx.send("Status changed!")
+        await ctx.message.add_reaction("✅")
 
     @commands.command()
     @commands.is_owner()
@@ -44,7 +44,7 @@ class Base(commands.Cog):
         """
         Shuts the bot down.
         """
-        await ctx.send("Shutting down...")
+        await ctx.message.add_reaction("✅")
         await self.bot.close()
 
     @commands.command()
@@ -57,9 +57,9 @@ class Base(commands.Cog):
         self.bot.available_cogs = await self.bot.load_cogs()
         new_extensions = len(self.bot.extensions) - extension_count
         if new_extensions > 0:
-            await ctx.send(f"{new_extensions} cogs loaded!")
+            await ctx.reply(f"{new_extensions} cogs loaded!")
             return
-        await ctx.send("No new cogs found")
+        await ctx.reply("No new cogs found")
 
     @commands.command()
     @commands.is_owner()
@@ -73,10 +73,10 @@ class Base(commands.Cog):
         """
         try:
             await self.bot.reload_extension(f"cogs.{cog}")
-            await ctx.send(f"{cog} reloaded!")
+            await ctx.message.add_reaction("✅")
         except commands.ExtensionError as e:
             self.bot.logger.warn(traceback.format_exc())
-            await ctx.send(f"An error occurred: `{e}`\nCheck your logs for more details.")
+            await ctx.reply(f"An error occurred: `{e}`\nCheck your logs for more details.")
 
     async def set_status(self):
         await self.bot.wait_until_ready()

@@ -9,4 +9,4 @@ class Ping(commands.Cog):
     @commands.command()
     async def ping(self, ctx):
         """Respond with 'pong!'"""
-        await ctx.send("Pong!")
+        await ctx.reply("Pong!")

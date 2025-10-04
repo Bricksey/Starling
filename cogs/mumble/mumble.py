@@ -61,7 +61,7 @@ class Mumble(commands.Cog):
         
         [Learn more about Mumble](<https://www.mumble.info/>)
         """
-        await ctx.send(msg)
+        await ctx.reply(msg)
 
     @mumble.command()
     @commands.is_owner()
@@ -76,7 +76,7 @@ class Mumble(commands.Cog):
         """
         if server_address is None:
             self.mumble_server = None
-            await ctx.send("Mumble server unset, tracking disabled.")
+            await ctx.reply("Mumble server unset, tracking disabled.")
         url = urlparse(f"//{server_address}")
         address = url.hostname
         if port := url.port is None:
@@ -85,10 +85,10 @@ class Mumble(commands.Cog):
         async with ctx.typing():
             reachable = await self.server_is_reachable(address, port)
         if not reachable:
-            await ctx.send("That server does not appear reachable, try again.")
+            await ctx.reply("That server does not appear reachable, try again.")
         else:
             self.mumble_server = [address, port]
-            await ctx.send("Server set!")
+            await ctx.message.add_reaction("✅")
         await self.update_conf()
 
     @mumble.command()
@@ -104,9 +104,9 @@ class Mumble(commands.Cog):
             self.update_statuses.change_interval(seconds=interval)
             self.task_interval = interval
             await self.update_conf()
-            await ctx.send("Updated interval")
+            await ctx.message.add_reaction("✅")
         except ValueError:
-            await ctx.send("Invalid value for interval")
+            await ctx.reply("Invalid value for interval")
 
     @mumble.command()
     @commands.is_owner()
@@ -122,25 +122,26 @@ class Mumble(commands.Cog):
         try:
             channel_id = int(channel_id)
             if not isinstance(self.bot.get_channel(channel_id), discord.VoiceChannel):
-                await ctx.send(f"{channel_id} is not a valid voice channel.")
+                await ctx.reply(f"{channel_id} is not a valid voice channel.")
                 return
         except ValueError:
-            await ctx.send("Discord channel IDs must be integers.")
+            await ctx.reply("Discord channel IDs must be integers.")
         if channel_id in self.channels:
+            # Toggle status off if already present.
             self.channels.remove(channel_id)
             channel = self.bot.get_channel(channel_id)
             await channel.edit(status=None)
             voice_client = channel.guild.voice_client
             if voice_client is not None:
                 await voice_client.disconnect()
-            await ctx.send("Toggled status off.")
+            await ctx.message.add_reaction("✅")
             await self.update_conf()
             return
         self.channels.append(channel_id)
         # Force update
         self.user_count = None
         await self.update_conf()
-        await ctx.send("Added status to channel")
+        await ctx.message.add_reaction("✅")
         self.logger.info(f"Mumble tracking added for channel {channel_id}")
 
     @mumble.command()
@@ -151,12 +152,12 @@ class Mumble(commands.Cog):
         user_id = ctx.message.author.id
         if user_id in self.users:
             self.users.remove(user_id)
-            setting = "off"
+            setting = "🔕"
         else:
             self.users.append(user_id)
-            setting = "on"
+            setting = "🔔"
         await self.update_conf()
-        await ctx.send(f"Toggled Mumble notifications {setting}")
+        await ctx.message.add_reaction(setting)
 
     @tasks.loop(seconds=5)
     async def update_statuses(self):
