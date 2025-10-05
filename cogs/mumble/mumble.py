@@ -18,6 +18,7 @@ class Mumble(commands.Cog):
         self.task_interval = 5
         self.users = []
         self.channels = []
+        self.notify_cooldown = False
 
     async def cog_load(self):
         default_config = {
@@ -38,6 +39,7 @@ class Mumble(commands.Cog):
         for channel in self.channels:
             await self.clear_channel(channel)
         self.update_statuses.stop()
+        self.notify_cooldown_task.stop()
 
 
     @commands.group(invoke_without_command=True)
@@ -167,6 +169,10 @@ class Mumble(commands.Cog):
             # Don't ping Discord if no status update is needed
             return
 
+        if self.user_count == 0:
+            # Don't ping on brief disconnects
+            self.notify_cooldown_task.start()
+
         for channel in self.channels:
             user_plural = "users" if self.user_count != 1 else "user"
             await channel.edit(status=f"{self.user_count} {user_plural} on Mumble")
@@ -182,7 +188,10 @@ class Mumble(commands.Cog):
 
         # Only notify users when someone first joins a server
         if previous_count == 0 and self.user_count > 0:
-            self.logger.info(f"pinging users for Mumble")
+            if self.notify_cooldown:
+                self.logger.info("Not pinging due to cooldown.")
+                return
+            self.logger.info(f"Pinging users for Mumble")
             for user in self.users:
                 dm = await user.create_dm()
                 msg = f"Mumble just became active!"
@@ -208,6 +217,14 @@ class Mumble(commands.Cog):
         self.users = [self.bot.get_user(u) for u in user_ids]
         channel_ids = self.conf["channels"]
         self.channels = [self.bot.get_channel(c) for c in channel_ids]
+
+    @tasks.loop(minutes=2, count=2)
+    async def notify_cooldown_task(self):
+        # Task runs twice, once to set the cooldown and once to clear it.
+        if self.notify_cooldown:
+            self.notify_cooldown = False
+        else:
+            self.notify_cooldown = True
 
     async def update_conf(self):
         # Can't store channel/user objects, use IDs
