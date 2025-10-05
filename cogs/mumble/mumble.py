@@ -27,8 +27,6 @@ class Mumble(commands.Cog):
             "mumble_server": None
         }
         self.conf = await self.bot.get_config("mumble", default_config)
-        self.users = self.conf["users"]
-        self.channels = self.conf["channels"]
         self.task_interval = self.conf["task_interval"]
         self.mumble_server = self.conf["mumble_server"]
         self.logger.info(f"Starting Mumble task")
@@ -38,11 +36,7 @@ class Mumble(commands.Cog):
     async def cog_unload(self):
         self.logger.info("Unloading Mumble Status, clearing channel status")
         for channel in self.channels:
-            channel = self.bot.get_channel(channel)
-            voice_client = channel.guild.voice_client
-            await channel.edit(status=None)
-            if voice_client is not None:
-                await voice_client.disconnect()
+            await self.clear_channel(channel)
         self.update_statuses.stop()
 
 
@@ -93,68 +87,52 @@ class Mumble(commands.Cog):
 
     @mumble.command()
     @commands.is_owner()
-    async def interval(self, ctx, interval):
+    async def interval(self, ctx, interval: float):
         """
         Sets the frequency at which the server is pinged
         Arguments:
             interval: a float value indicating how many seconds between updates
         """
-        try:
-            interval = float(interval)
-            self.update_statuses.change_interval(seconds=interval)
-            self.task_interval = interval
-            await self.update_conf()
-            await ctx.message.add_reaction("✅")
-        except ValueError:
-            await ctx.reply("Invalid value for interval")
+        self.update_statuses.change_interval(seconds=interval)
+        self.task_interval = interval
+        await self.update_conf()
+        await ctx.message.add_reaction("✅")
 
     @mumble.command()
     @commands.is_owner()
-    async def status(self, ctx, channel_id=None):
+    async def status(self, ctx, channel: discord.VoiceChannel):
         """
         Toggles displaying the Mumble status on the given channel.
         Arguments:
-            channel_id: The ID of a Discord voice channel
+            channel: The ID of a Discord voice channel
         Example Usage:
             [p]mumble status 1234567890
         """
-        # Ensure channel exists and server is reachable before writing to config
-        try:
-            channel_id = int(channel_id)
-            if not isinstance(self.bot.get_channel(channel_id), discord.VoiceChannel):
-                await ctx.reply(f"{channel_id} is not a valid voice channel.")
-                return
-        except ValueError:
-            await ctx.reply("Discord channel IDs must be integers.")
-        if channel_id in self.channels:
-            # Toggle status off if already present.
-            self.channels.remove(channel_id)
-            channel = self.bot.get_channel(channel_id)
-            await channel.edit(status=None)
-            voice_client = channel.guild.voice_client
-            if voice_client is not None:
-                await voice_client.disconnect()
+        # Toggle status off if already present.
+        if channel in self.channels:
+            self.channels.remove(channel)
+            await self.clear_channel(channel)
             await ctx.message.add_reaction("✅")
             await self.update_conf()
             return
-        self.channels.append(channel_id)
+        self.channels.append(channel)
         # Force update
         self.user_count = None
         await self.update_conf()
         await ctx.message.add_reaction("✅")
-        self.logger.info(f"Mumble tracking added for channel {channel_id}")
+        self.logger.info(f"Mumble tracking added for channel: {channel.name}")
 
     @mumble.command()
     async def notify(self, ctx):
         """
         Toggles DM notifications for activity on the Mumble server
         """
-        user_id = ctx.message.author.id
-        if user_id in self.users:
-            self.users.remove(user_id)
+        user = ctx.message.author
+        if user in self.users:
+            self.users.remove(user)
             setting = "🔕"
         else:
-            self.users.append(user_id)
+            self.users.append(user)
             setting = "🔔"
         await self.update_conf()
         await ctx.message.add_reaction(setting)
@@ -189,8 +167,7 @@ class Mumble(commands.Cog):
             # Don't ping Discord if no status update is needed
             return
 
-        for channel_id in self.channels:
-            channel = self.bot.get_channel(channel_id)
+        for channel in self.channels:
             user_plural = "users" if self.user_count != 1 else "user"
             await channel.edit(status=f"{self.user_count} {user_plural} on Mumble")
             # Show voice indicator if Mumble is active by joining channel
@@ -206,11 +183,7 @@ class Mumble(commands.Cog):
         # Only notify users when someone first joins a server
         if previous_count == 0 and self.user_count > 0:
             self.logger.info(f"pinging users for Mumble")
-            for user_id in self.users:
-                user = self.bot.get_user(user_id)
-                if user is None:
-                    # Only ping discord if user isn't cached
-                    user = await self.bot.fetch_user(user_id)
+            for user in self.users:
                 dm = await user.create_dm()
                 msg = f"Mumble just became active!"
                 await dm.send(msg)
@@ -220,7 +193,7 @@ class Mumble(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         # Status gets cleared when a channel is empty
         channel = before.channel
-        if channel is None or channel.id not in self.channels:
+        if channel is None or channel not in self.channels:
             return
 
         if len(before.channel.members) == 0:
@@ -230,21 +203,34 @@ class Mumble(commands.Cog):
     @update_statuses.before_loop
     async def wait_until_ready(self):
         await self.bot.wait_until_ready()
+        # Wait until bot is ready before getting users and channels
+        user_ids = self.conf["users"]
+        self.users = [self.bot.get_user(u) for u in user_ids]
+        channel_ids = self.conf["channels"]
+        self.channels = [self.bot.get_channel(c) for c in channel_ids]
 
     async def update_conf(self):
+        # Can't store channel/user objects, use IDs
+        channel_ids = [c.id for c in self.channels]
+        user_ids = [u.id for u in self.users]
         self.conf = {
             "task_interval": self.task_interval,
-            "channels": self.channels,
-            "users": self.users,
+            "channels": channel_ids,
+            "users": user_ids,
             "mumble_server": self.mumble_server
         }
         await self.bot.write_config("mumble", self.conf)
 
+    async def clear_channel(self, channel):
+        """Remove channel status and disconnect from voice."""
+        await channel.edit(status=None)
+        voice_client = channel.guild.voice_client
+        if voice_client is not None:
+            await voice_client.disconnect()
+
+
     @staticmethod
     async def server_is_reachable(server, port=64738):
-        # Check for server:port in string to reduce parsing in other functions
-        if len(s := server.split(":")) > 1:
-            port = int(s[1])
         tries = 0
         while (tries := tries + 1) < 3:
             try:
