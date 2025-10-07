@@ -1,20 +1,17 @@
 import discord
 from discord.ext import commands
-import textwrap
 
 
 class HelpCommand(commands.HelpCommand):
-    wrapper = textwrap.TextWrapper(drop_whitespace=True)
     async def send_bot_help(self, mapping):
         username = self.context.bot.user.name
+        ver = discord.__version__
         prefix = self.context.bot.command_prefix
-        msg = f"""\
-        ### About {username}:
-        *{username}* is a multipurpose Discord bot running on discord.py {discord.__version__}
-        There are currently **{len(mapping) - 1}** cogs loaded.
-        ### Cogs:
-        ```yaml"""
-        msg = textwrap.dedent(msg)
+        msg = f"### About {username}\n"
+        msg += f"*{username}* is a multipurpose bot built on discord.py {ver}\n"
+        msg += "### Cogs: \n"
+       # Start code block for cog output
+        msg += "```yaml\n"
         for cog, cmds in mapping.items():
             if cog is None:
                 # This help command will not have a cog, skip.
@@ -24,23 +21,28 @@ class HelpCommand(commands.HelpCommand):
                 continue
             msg += f"\n{cog.qualified_name}: {cog.description or "No description"}"
         msg += f"```\n* Run `{prefix}help cog_name` to see command usage."
-        await self.get_destination().send(msg)
+        await self.context.reply(msg)
 
     async def send_cog_help(self, cog):
+        cmds = await self.filter_commands(cog.walk_commands())
+        if len(cmds) == 0:
+            # Don't print help if the user can't use the cog.
+            msg = "You don't have access to any commands in this cog."
+            await self.context.reply(msg)
+            return
         prefix = self.context.bot.command_prefix
         msg = f"### Commands for `{cog.qualified_name}`\n```yaml"
-        cmds = cog.get_commands()
-        for command in await self.filter_commands(cmds):
-            msg += await self.get_all_group_commands(command)
+        for command in cmds:
+            if command.short_doc != "":
+                msg += f"\n{command.qualified_name}: {command.short_doc}"
         msg += f"\n```\n* For detailed info on a command, run `{prefix}help command_name`"
-        await self.get_destination().send(msg)
+        await self.context.reply(msg)
 
     async def send_command_help(self, cmd: commands.Command):
         prefix = self.context.bot.command_prefix
         msg = f"### Help for `{cmd.qualified_name}`"
         msg += f"\n```yaml\n{cmd.help}\n```".replace("[p]", prefix)
-        await self.get_destination().send(msg)
-
+        await self.context.reply(msg)
 
     async def send_group_help(self, group):
         bot = self.context.bot
@@ -51,9 +53,18 @@ class HelpCommand(commands.HelpCommand):
             await self.send_cog_help(cog)
             return
         prefix = self.context.bot.command_prefix
-        msg = f"### Help for `{group.qualified_name}`"
-        msg += f"\n```yaml\n{group.help}\n```".replace("[p]", prefix)
-        await self.get_destination().send(msg)
+        msg = f"### Help for `{group.qualified_name}`\n"
+        msg += "```yaml\n"
+        msg += f"{group.help}```\n".replace("[p]", prefix)
+        # Show the group's subcommands if any are available
+        cmds = await self.filter_commands(group.walk_commands())
+        if len(cmds) != 0:
+            msg += f"### Commands in `{group.qualified_name}`\n"
+            msg += "```yaml\n"
+            for command in cmds:
+                msg += f"{command.qualified_name}: {command.short_doc}\n"
+            msg += "```"
+        await self.context.reply(msg)
 
     async def command_not_found(self, string):
         cog_name = string.capitalize()
@@ -62,7 +73,7 @@ class HelpCommand(commands.HelpCommand):
             cog = bot.cogs[cog_name]
             await self.send_cog_help(cog)
         else:
-            await self.get_destination().send("Command not found")
+            await self.context.reply("Command not found")
 
     async def subcommand_not_found(self, command, string):
         # If a subcommand is not found, send parent's help
@@ -74,12 +85,3 @@ class HelpCommand(commands.HelpCommand):
     async def send_error_message(self, error):
         # Not needed as command_not_found prints the error.
         pass
-
-    async def get_all_group_commands(self, group):
-        if group.short_doc is not None:
-            msg = f"\n{group.qualified_name}: {group.short_doc}"
-        if type(group) is commands.core.Group:
-            for command in await self.filter_commands(group.commands):
-                msg += await self.get_all_group_commands(command)
-
-        return msg
