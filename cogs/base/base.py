@@ -88,4 +88,30 @@ class Base(commands.Cog):
             status = f"{p}help | {users} users | {guilds} servers"
         await self.bot.change_presence(activity=discord.CustomActivity(status))
 
+    @commands.command()
+    @commands.cooldown(1, 120)
+    async def contact(self, ctx, *, message):
+        """
+        Sends a DM to the bot's owner
+        This command has a cooldown of 120 seconds.
+        Arguments:
+            message: The message to send
+        Example usage:
+            [p]contact Lorem ipsum dolor sit amet
+        """
+        #Ensure newlines are preserved within the quote block
+        message = message.replace("\n", "\n> ")
+        owner_id = self.bot.owner_id
+        owner = self.bot.get_user(owner_id)
+        author = ctx.message.author
+        if owner is None:
+            #Fetch owner if not already cached
+            owner = await self.bot.fetch_user(owner_id)
+        dm = owner.dm_channel or await owner.create_dm()
+        msg = "### New message from `contact`\n"
+        msg += f"> {message}\n"
+        msg += f"-*{author.name}*"
+        await dm.send(msg)
+        await ctx.message.add_reaction("📨")
+
 
