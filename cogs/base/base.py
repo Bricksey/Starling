@@ -82,7 +82,7 @@ class Base(commands.Cog):
         await self.bot.wait_until_ready()
         status = self.conf["status"]
         if status == "default":
-            p = self.bot.command_prefix
+            p = self.bot.text_prefix
             users = len(list(self.bot.get_all_members()))
             guilds = len(self.bot.guilds)
             status = f"{p}help | {users} users | {guilds} servers"
