@@ -1,5 +1,4 @@
 import traceback
-
 import discord
 import sys
 from discord.ext import commands
@@ -57,42 +56,31 @@ class Bot(commands.Bot):
         with open(f"{self.config_path}/{identifier}.yaml", "w") as f:
             yaml.safe_dump(data, f)
 
-def first_run(path):
-    token = input("Bot token: ")
-    if token == "":
-        print("Token cannot be blank")
-        sys.exit(1)
-    prefix = input("Command prefix[!]: ")
-    if prefix == "":
-        prefix = "!"
-
-    initial_config= {
-        "token": token,
-        "prefix": prefix
-    }
-
-    os.mkdir(path)
-    with open(path + "bot.yaml", "w") as f:
-        yaml.safe_dump(initial_config, f)
-    return initial_config
-
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="A multipurpose Discord bot.",
+        epilog="Token must be set before usage."
+    )
+    parser.add_argument('-t', '--token')
+    parser.add_argument('-p', '--prefix', default="!")
+    parser.add_argument('-v', '--verbose', action='store_true')
+    args = parser.parse_args()
     config_path = "./config/"
-    bot_config_path = config_path + "bot.yaml"
-    try:
-        with open(bot_config_path, "rb") as f:
-            bot_config = yaml.safe_load(f)
-    except FileNotFoundError:
-        bot_config = first_run(config_path)
-
-    prefix = bot_config["prefix"]
-    token = bot_config["token"]
-
+    prefix = os.getenv("PREFIX") or args.prefix
+    token = args.token or os.getenv("TOKEN")
+    if token is None:
+        parser.print_help()
+        sys.exit(1)
+    if args.verbose:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
     bot = Bot(prefix, config_path)
     bot.run(
         token,
-        log_level=logging.INFO,
+        log_level=log_level,
         root_logger=True
     )
 
