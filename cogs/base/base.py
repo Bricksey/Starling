@@ -6,7 +6,7 @@ from .help_command import HelpCommand
 
 
 class Base(commands.Cog):
-    """Commands providing core functionality and cog management"""
+    """Commands providing core functionality"""
     def __init__(self, bot):
         self.bot = bot
         self.conf = {}
