@@ -17,10 +17,16 @@ class Base(commands.Cog):
         }
         self.conf = await self.bot.get_config("base", default_config)
         self.bot.help_command = HelpCommand()
+        #Save prefix for use in status, then enable mentions
+        self.status_string = self.bot.command_prefix
+        self.bot.command_prefix = commands.when_mentioned_or(self.status_string)
 
     @commands.Cog.listener()
     async def on_ready(self):
         await self.set_status()
+
+    async def cog_unload(self):
+        self.bot.command_prefix = self.status_string
 
     @commands.command()
     @commands.is_owner()
@@ -82,7 +88,7 @@ class Base(commands.Cog):
         await self.bot.wait_until_ready()
         status = self.conf["status"]
         if status == "default":
-            p = self.bot.text_prefix
+            p = self.status_string
             users = len(list(self.bot.get_all_members()))
             guilds = len(self.bot.guilds)
             status = f"{p}help | {users} users | {guilds} servers"

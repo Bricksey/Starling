@@ -77,9 +77,7 @@ def main():
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
-    bot = Bot(commands.when_mentioned_or(prefix), config_path)
-    # Store text prefix for access without context (i.e. for status)
-    bot.text_prefix = prefix
+    bot = Bot(prefix, config_path)
     bot.run(
         token,
         log_level=log_level,
