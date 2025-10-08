@@ -6,7 +6,7 @@ class HelpCommand(commands.HelpCommand):
     async def send_bot_help(self, mapping):
         username = self.context.bot.user.name
         ver = discord.__version__
-        prefix = self.context.bot.command_prefix
+        prefix = self.context.clean_prefix
         msg = f"### About {username}\n"
         msg += f"*{username}* is a multipurpose bot built on discord.py {ver}\n"
         msg += "### Cogs: \n"
@@ -30,7 +30,7 @@ class HelpCommand(commands.HelpCommand):
             msg = "You don't have access to any commands in this cog."
             await self.context.reply(msg)
             return
-        prefix = self.context.bot.command_prefix
+        prefix = self.context.clean_prefix
         msg = f"### Commands for `{cog.qualified_name}`\n```yaml"
         for command in cmds:
             if command.short_doc != "":
@@ -39,7 +39,7 @@ class HelpCommand(commands.HelpCommand):
         await self.context.reply(msg)
 
     async def send_command_help(self, cmd: commands.Command):
-        prefix = self.context.bot.command_prefix
+        prefix = self.context.clean_prefix
         msg = f"### Help for `{cmd.qualified_name}`"
         msg += f"\n```yaml\n{cmd.help}\n```".replace("[p]", prefix)
         await self.context.reply(msg)
@@ -52,7 +52,7 @@ class HelpCommand(commands.HelpCommand):
             cog = bot.cogs[cog_name]
             await self.send_cog_help(cog)
             return
-        prefix = self.context.bot.command_prefix
+        prefix = self.context.clean_prefix
         msg = f"### Help for `{group.qualified_name}`\n"
         msg += "```yaml\n"
         msg += f"{group.help}```\n".replace("[p]", prefix)

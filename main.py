@@ -77,7 +77,7 @@ def main():
         log_level = logging.DEBUG
     else:
         log_level = logging.INFO
-    bot = Bot(prefix, config_path)
+    bot = Bot(commands.when_mentioned_or(prefix), config_path)
     bot.run(
         token,
         log_level=log_level,
