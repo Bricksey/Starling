@@ -64,13 +64,13 @@ class Profile(commands.Cog):
     @commands.is_owner()
     @commands.guild_only()
     @profile.command()
-    async def nickname(self, ctx, *, name):
+    async def nickname(self, ctx, *, name=None):
         """
         Change the bot's nickname in this server.
         Arguments:
             name: The new nickname to set.
         Example usage:
-            [p]profile nickname John Bot
+            [p]profile nickname Jane Bot
         """
         try:
             await ctx.guild.me.edit(nick=name)
