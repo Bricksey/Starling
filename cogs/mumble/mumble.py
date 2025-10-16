@@ -167,11 +167,16 @@ class Mumble(commands.Cog):
             return
         if previous_count == self.user_count:
             # Don't ping Discord if no status update is needed
+            self.logger.debug("Mumble has not changed user count.")
             return
 
-        if self.user_count == 0:
+        if self.user_count == 0 and previous_count is not None:
             # Don't ping on brief disconnects
-            self.notify_cooldown_task.start()
+            self.logger.debug("Starting notification cooldown.")
+            try:
+                self.notify_cooldown_task.start()
+            except RuntimeError:
+                pass
 
         for channel in self.channels:
             user_plural = "users" if self.user_count != 1 else "user"
