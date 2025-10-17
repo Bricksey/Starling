@@ -1,8 +1,31 @@
 import traceback
 
 import discord
+from discord import ui
 from discord.ext import commands
 from .help_command import HelpCommand
+
+class ContactMessage(ui.LayoutView):
+    def __init__(self, user, content, ctx):
+        super().__init__()
+        prefix = ctx.clean_prefix
+        if ctx.guild is not None:
+            guild = ctx.guild.name
+            channel = ctx.channel.name
+            origin_text = f"Sent from **{channel}** in **{guild}**\n"
+        else:
+            origin_text = "Sent via DMs\n"
+        title_text = f"### 📨 Message from {user.name}\n"
+        title_text += origin_text
+        title_text += f"Sent via `{prefix}contact`\n"
+        title = ui.TextDisplay(title_text)
+        thumb = ui.Thumbnail(user.display_avatar.url)
+        title_bar = ui.Section(title, accessory=thumb)
+        # Wrap message in a quote block
+        content = "> " + content
+        message_text = ui.TextDisplay(content)
+        container = ui.Container(title_bar, message_text)
+        self.add_item(container)
 
 
 class Base(commands.Cog):
@@ -103,7 +126,7 @@ class Base(commands.Cog):
         Arguments:
             message: The message to send
         Example usage:
-            [p]contact Lorem ipsum dolor sit amet
+            [p]contact *paws at you* I need 20 dollars rn >w<
         """
         #Ensure newlines are preserved within the quote block
         message = message.replace("\n", "\n> ")
@@ -114,10 +137,8 @@ class Base(commands.Cog):
             #Fetch owner if not already cached
             owner = await self.bot.fetch_user(owner_id)
         dm = owner.dm_channel or await owner.create_dm()
-        msg = "### New message from `contact`\n"
-        msg += f"> {message}\n"
-        msg += f"-*{author.name}*"
-        await dm.send(msg)
+        view = ContactMessage(author, message, ctx)
+        await dm.send(view=view)
         await ctx.message.add_reaction("📨")
 
 
