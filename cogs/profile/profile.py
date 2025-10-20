@@ -26,7 +26,7 @@ class Profile(commands.Cog):
         except discord.errors.HTTPException as e:
             await ctx.reply(str(e).split(":")[-1])
         except (ValueError, IndexError):
-            msg = "Unsupported attachment"
+            msg = "Unsupported attachment\n"
             msg += "Supported types are JPEG, PNG, GIF, and WEBP."
             await ctx.reply(msg)
 
