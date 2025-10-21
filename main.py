@@ -6,6 +6,7 @@ import argparse
 import yaml
 import logging
 import os
+from datetime import datetime
 
 
 class Bot(commands.Bot):
@@ -16,6 +17,8 @@ class Bot(commands.Bot):
         self.logger = logging.getLogger(__name__)
         self.config_path = config_path
         self.available_cogs = {}
+        # Allow getting bot uptime
+        self.start_time = datetime.now()
         super().__init__(prefix, intents=intents)
 
     async def setup_hook(self):

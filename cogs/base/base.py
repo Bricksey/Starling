@@ -1,4 +1,6 @@
+from datetime import datetime
 import traceback
+import os
 
 import discord
 from discord import ui
@@ -26,6 +28,22 @@ class ContactMessage(ui.LayoutView):
         message_text = ui.TextDisplay(content)
         container = ui.Container(title_bar, message_text)
         self.add_item(container)
+
+class InfoView(ui.LayoutView):
+    def __init__(self, bot):
+        super().__init__()
+        uptime = datetime.now() - bot.start_time
+        cog_amt = len(bot.cogs)
+        cmd_amt = len(bot.commands)
+        text = "### Info\n"
+        text += f"* Hosted on: `{os.uname()[1]}`\n"
+        text += f"* Uptime: `{str(uptime)[:-7]}`\n"
+        text += f"* {cog_amt} cogs loaded\n"
+        text += f"* {cmd_amt} total commands\n"
+        thumb = ui.Thumbnail(bot.user.display_avatar.url)
+        content = ui.Section(text, accessory=thumb)
+        content = ui.Container(content)
+        self.add_item(content)
 
 
 class Base(commands.Cog):
@@ -141,4 +159,8 @@ class Base(commands.Cog):
         await dm.send(view=view)
         await ctx.message.add_reaction("📨")
 
-
+    @commands.command()
+    async def info(self, ctx):
+        """Prints information and statistics for the bot."""
+        view = InfoView(self.bot)
+        await ctx.reply(view=view)
