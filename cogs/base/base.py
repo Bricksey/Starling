@@ -144,7 +144,7 @@ class Base(commands.Cog):
         Arguments:
             message: The message to send
         Example usage:
-            [p]contact *paws at you* I need 20 dollars rn >w<
+            [p]contact The bot stopped working!
         """
         #Ensure newlines are preserved within the quote block
         message = message.replace("\n", "\n> ")

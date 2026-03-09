@@ -5,11 +5,6 @@ from asyncio import DatagramProtocol
 
 from . import MumbleUDP_pb2
 
-# TODO:
-# - Some form of protobuf compilation by itself?
-# - Mumble SRV record lookup
-# - Check return address matches sending address?
-
 
 def encode_ping() -> MumbleUDP_pb2.Ping:
     ping_request = MumbleUDP_pb2.Ping()
@@ -41,7 +36,6 @@ class MumbleClientProtocol(DatagramProtocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        # print("sending")
         self.transport.sendto(self.encoded_ping)
 
     def datagram_received(self, data, addr):
@@ -61,7 +55,6 @@ class MumbleClientProtocol(DatagramProtocol):
         self.on_con_lost.set_exception(exc)
 
     def connection_lost(self, exc):
-        # print("closing")
         if self.on_con_lost.done():
             return
 
@@ -79,7 +72,6 @@ async def fetch_user_count(host, port=64738) -> int | None:
         remote_addr=(host, port),
     )
 
-    # print("here1")
     try:
         async with asyncio.timeout(1):
             return await on_con_lost
