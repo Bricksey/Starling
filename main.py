@@ -71,6 +71,12 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     config_path = "./config/"
+    if not os.path.isdir(config_path):
+        try:
+            os.mkdir(config_path)
+        except Exception as e:
+            print(f"Couldn't create config directory:{e}")
+            sys.exit(1)
     prefix = os.getenv("PREFIX") or args.prefix
     token = args.token or os.getenv("TOKEN")
     if token is None:
