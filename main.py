@@ -30,9 +30,15 @@ class Bot(commands.Bot):
     async def load_cogs(self):
         valid_cogs = []
         failed_cogs = []
-        for cog in os.listdir("cogs"):
+        cog_modules = [f"cogs.{c}" for c in os.listdir("cogs")]
+
+        # Non-bundled cogs mounted from docker host.
+        if os.path.isdir("cogs_mounted"):
+            cog_modules += [f"cogs_mounted.{c}" for c in os.listdir("cogs_mounted")]
+
+        for cog in cog_modules:
             try:
-                await self.load_extension(f"cogs.{cog}")
+                await self.load_extension(cog)
                 valid_cogs.append(cog)
             except commands.ExtensionAlreadyLoaded:
                 # Allow loading new cogs by running this function again from base
@@ -42,6 +48,7 @@ class Bot(commands.Bot):
                 self.logger.warning(f"Extension load failed for {cog}: {e}")
                 self.logger.debug(traceback.format_exc())
                 failed_cogs.append(cog)
+
         if len(failed_cogs) > 0:
             self.logger.warning(f"Failed to load the following cogs: {failed_cogs}")
         self.logger.info(f"Cogs found: {valid_cogs}")
