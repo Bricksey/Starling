@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# IDE Specific
+.idea
+.vscode
+
+# Config
+config
+
+# Non-bundled cogs
+cogs_mounted
+
+# Not necessary to run
+LICENSE
+README.md
+Dockerfile
