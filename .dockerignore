@@ -23,3 +23,4 @@ cogs_mounted
 LICENSE
 README.md
 Dockerfile
+compose.yml

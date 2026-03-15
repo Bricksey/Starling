@@ -22,11 +22,14 @@ The bundled cogs are configured with commands and will write their configuration
 | ping    | Responds to the `ping` command, shows basic cog functionality.           |
 | Profile | Edit the bot's Discord profile.                                          |
 
-## Running
+## Running Locally
 This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 Run the bot using `uv run main.py`, ensuring your token is set.<br>
 Once the bot is running, run `help` for more information on the bundled cogs.
+
+## Running with Docker
+An example [compose file](compose.yml) is included, ensure the token is set before running.
 
 
 

@@ -1,0 +1,10 @@
+services:
+  starling:
+    image: ghcr.io/bricksey/starling
+    environment:
+      TOKEN: "your_discord_token" # Must be set before usage
+    volumes:
+      - "./config:/app/config"
+
+      # To load additional cogs, uncomment this line and place cogs in ./cogs
+      # - "./cogs:/app/cogs_mounted"
