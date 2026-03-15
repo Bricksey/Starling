@@ -29,7 +29,7 @@ Run the bot using `uv run main.py`, ensuring your token is set.<br>
 Once the bot is running, run `help` for more information on the bundled cogs.
 
 ## Running with Docker
-An example [compose file](compose.yml) is included, ensure the token is set before running.
+An example [compose file](compose.yml) is included, ensure the token is set and the `config` directory is created before running.
 
 
 
