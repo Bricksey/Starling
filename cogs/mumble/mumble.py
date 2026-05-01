@@ -73,6 +73,11 @@ class Mumble(commands.Cog):
         if server_address is None:
             self.mumble_server = None
             await ctx.reply("Mumble server unset, tracking disabled.")
+            await self.update_conf()
+            for channel in self.channels:
+                await self.clear_channel(channel)
+            return
+
         url = urlparse(f"//{server_address}")
         address = url.hostname
         if port := url.port is None:
